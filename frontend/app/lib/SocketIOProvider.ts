@@ -16,6 +16,10 @@ export class SocketIOProvider {
   private synced: boolean = false;
   private isReconnecting: boolean = false;
   private userRole: 'owner' | 'editor' | 'viewer' | null = null;
+  private updateQueue: Uint8Array[] = [];
+  private debounceTimer: NodeJS.Timeout | null = null;
+  private readonly DEBOUNCE_WAIT = 50; // 50ms debounce
+  private readonly MAX_QUEUE_SIZE = 10; // Max updates before forcing send
   private onSyncedCallbacks: ((synced: boolean) => void)[] = [];
   private onStatusCallbacks: ((status: { status: 'connected' | 'disconnected' | 'error'; error?: string }) => void)[] = [];
 
@@ -60,11 +64,46 @@ export class SocketIOProvider {
   private handleLocalUpdate = (update: Uint8Array, origin: any) => {
     // Don't send updates that came from remote (to avoid loops)
     if (origin !== this) {
-      this.socket.emit('yjs-update', {
-        documentId: this.documentId,
-        update: Array.from(update), // Convert Uint8Array to regular array for JSON
-      });
+      // Add update to queue
+      this.updateQueue.push(update);
+
+      // Clear existing timer
+      if (this.debounceTimer) {
+        clearTimeout(this.debounceTimer);
+      }
+
+      // If queue is full, send immediately
+      if (this.updateQueue.length >= this.MAX_QUEUE_SIZE) {
+        this.flushUpdates();
+      } else {
+        // Otherwise debounce
+        this.debounceTimer = setTimeout(() => {
+          this.flushUpdates();
+        }, this.DEBOUNCE_WAIT);
+      }
     }
+  };
+
+  /**
+   * Flush all queued updates by merging them into a single update
+   */
+  private flushUpdates = () => {
+    if (this.updateQueue.length === 0) return;
+
+    // Merge all updates into a single update
+    const mergedUpdate = this.updateQueue.length === 1
+      ? this.updateQueue[0]
+      : Y.mergeUpdates(this.updateQueue);
+
+    // Send merged update
+    this.socket.emit('yjs-update', {
+      documentId: this.documentId,
+      update: Array.from(mergedUpdate),
+    });
+
+    // Clear queue
+    this.updateQueue = [];
+    this.debounceTimer = null;
   };
 
   private handleAwarenessUpdate = ({ added, updated, removed }: any) => {
@@ -211,6 +250,12 @@ export class SocketIOProvider {
    * Leave the document room
    */
   public disconnect() {
+    // Flush any pending updates before disconnecting
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.flushUpdates();
+    }
+
     this.socket.emit('leave-document', this.documentId);
     
     // Remove listeners

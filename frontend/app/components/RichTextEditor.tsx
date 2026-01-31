@@ -4,7 +4,6 @@ import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Collaboration from '@tiptap/extension-collaboration';
-import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import { useEffect } from 'react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
@@ -200,6 +199,7 @@ export default function RichTextEditor({
     : editable;
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Placeholder.configure({
@@ -211,17 +211,6 @@ export default function RichTextEditor({
               document: yjsDoc,
               field: 'content',
             }),
-            ...(awareness
-              ? [
-                  CollaborationCursor.configure({
-                    provider: awareness as any,
-                    user: user || {
-                      name: 'Anonymous',
-                      color: '#' + Math.floor(Math.random() * 16777215).toString(16),
-                    },
-                  }),
-                ]
-              : []),
           ]
         : []),
     ],

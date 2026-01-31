@@ -74,10 +74,50 @@ const documentPresence = new Map<
 // Track Y.Doc instances and update counts for persistence
 const documentStates = new Map<
   string,
-  { ydoc: Y.Doc; updateCount: number; timer: NodeJS.Timeout | null }
+  {
+    ydoc: Y.Doc;
+    updateCount: number;
+    timer: NodeJS.Timeout | null;
+    lastAccess: number;
+  }
 >();
 const SAVE_INTERVAL = 30000; // 30 seconds
 const UPDATES_THRESHOLD = 50; // Save after 50 updates
+const CLEANUP_INACTIVE_TIMEOUT = 300000; // 5 minutes of inactivity
+const CLEANUP_CHECK_INTERVAL = 60000; // Check for cleanup every minute
+
+/**
+ * Cleanup inactive documents to free memory
+ */
+function cleanupInactiveDocuments() {
+  const now = Date.now();
+  const inactiveDocuments: string[] = [];
+
+  documentStates.forEach((state, documentId) => {
+    // Skip if document has active users
+    if (
+      documentPresence.has(documentId) &&
+      documentPresence.get(documentId)!.size > 0
+    ) {
+      state.lastAccess = now; // Update access time
+      return;
+    }
+
+    // Check if document has been inactive
+    if (now - state.lastAccess > CLEANUP_INACTIVE_TIMEOUT) {
+      inactiveDocuments.push(documentId);
+    }
+  });
+
+  // Cleanup inactive documents
+  inactiveDocuments.forEach((documentId) => {
+    console.log(`🧹 Cleaning up inactive document ${documentId}`);
+    cleanupDocumentState(documentId);
+  });
+}
+
+// Start periodic cleanup
+setInterval(cleanupInactiveDocuments, CLEANUP_CHECK_INTERVAL);
 
 /**
  * Save Yjs document snapshot to MongoDB
@@ -87,6 +127,7 @@ async function saveDocumentSnapshot(documentId: string) {
   if (!state) return;
 
   try {
+    // Use compact encoding for smaller snapshots
     const snapshot = Y.encodeStateAsUpdate(state.ydoc);
 
     await DocumentModel.findByIdAndUpdate(documentId, {
@@ -97,8 +138,9 @@ async function saveDocumentSnapshot(documentId: string) {
       `💾 Saved snapshot for document ${documentId} (${snapshot.length} bytes)`
     );
 
-    // Reset update count after save
+    // Reset update count and update access time
     state.updateCount = 0;
+    state.lastAccess = Date.now();
   } catch (error) {
     console.error(`Error saving snapshot for document ${documentId}:`, error);
   }
@@ -118,11 +160,14 @@ function getYDoc(documentId: string): Y.Doc {
       saveDocumentSnapshot(documentId);
     }, SAVE_INTERVAL);
 
-    state = { ydoc, updateCount: 0, timer };
+    state = { ydoc, updateCount: 0, timer, lastAccess: Date.now() };
     documentStates.set(documentId, state);
 
     console.log(`📝 Created new Y.Doc for document ${documentId}`);
   }
+
+  // Update last access time
+  state.lastAccess = Date.now();
 
   return state.ydoc;
 }

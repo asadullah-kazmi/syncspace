@@ -1,13 +1,17 @@
-import express, { Application } from 'express';
+﻿import express, { Application } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import routes from './routes';
 import { errorHandler } from './middleware/errorHandler';
+import { connectDB } from './config/database';
 
 dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
+
+// Connect to MongoDB
+connectDB();
 
 // Middleware
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3000' }));

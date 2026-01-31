@@ -4,8 +4,10 @@ import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Collaboration from '@tiptap/extension-collaboration';
+import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import { useEffect } from 'react';
 import * as Y from 'yjs';
+import { Awareness } from 'y-protocols/awareness';
 
 interface RichTextEditorProps {
   content?: string;
@@ -14,6 +16,11 @@ interface RichTextEditorProps {
   editable?: boolean;
   className?: string;
   yjsDoc?: Y.Doc;
+  awareness?: Awareness;
+  user?: {
+    name: string;
+    color: string;
+  };
 }
 
 const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) => {
@@ -182,6 +189,8 @@ export default function RichTextEditor({
   editable = true,
   className = '',
   yjsDoc,
+  awareness,
+  user,
 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -195,6 +204,17 @@ export default function RichTextEditor({
               document: yjsDoc,
               field: 'content',
             }),
+            ...(awareness
+              ? [
+                  CollaborationCursor.configure({
+                    provider: awareness as any,
+                    user: user || {
+                      name: 'Anonymous',
+                      color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+                    },
+                  }),
+                ]
+              : []),
           ]
         : []),
     ],
@@ -217,6 +237,16 @@ export default function RichTextEditor({
       editor.setEditable(editable);
     }
   }, [editable, editor]);
+
+  // Set awareness state when user info or editor changes
+  useEffect(() => {
+    if (awareness && user && editor) {
+      awareness.setLocalStateField('user', {
+        name: user.name,
+        color: user.color,
+      });
+    }
+  }, [awareness, user, editor]);
 
   return (
     <div

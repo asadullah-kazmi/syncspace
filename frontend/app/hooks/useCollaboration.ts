@@ -4,26 +4,37 @@ import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import * as Y from 'yjs';
 import { SocketIOProvider } from '../lib/SocketIOProvider';
+import { getUserColor, getUsernameFromEmail } from '../lib/userUtils';
 
 interface UseCollaborationOptions {
   documentId: string;
   token: string;
   serverUrl?: string;
+  userEmail?: string;
+  userId?: string;
 }
 
 /**
  * Hook to manage Socket.IO connection and Yjs provider for collaborative editing
  */
-export function useCollaboration(yjsDoc: Y.Doc, { documentId, token, serverUrl = 'http://localhost:5000' }: UseCollaborationOptions) {
+export function useCollaboration(yjsDoc: Y.Doc, { documentId, token, serverUrl = 'http://localhost:5000', userEmail, userId }: UseCollaborationOptions) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [provider, setProvider] = useState<SocketIOProvider | null>(null);
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
+  const [user, setUser] = useState<{ name: string; color: string } | null>(null);
   const providerRef = useRef<SocketIOProvider | null>(null);
 
   useEffect(() => {
     if (!documentId || !token) return;
+
+    // Set user info for awareness
+    if (userEmail && userId) {
+      const userName = getUsernameFromEmail(userEmail);
+      const userColor = getUserColor(userId);
+      setUser({ name: userName, color: userColor });
+    }
 
     // Create Socket.IO connection with JWT auth
     const socketInstance = io(serverUrl, {
@@ -85,7 +96,7 @@ export function useCollaboration(yjsDoc: Y.Doc, { documentId, token, serverUrl =
       socketInstance.disconnect();
       providerRef.current = null;
     };
-  }, [documentId, token, serverUrl, yjsDoc]);
+  }, [documentId, token, serverUrl, yjsDoc, userEmail, userId]);
 
   return {
     socket,
@@ -93,6 +104,8 @@ export function useCollaboration(yjsDoc: Y.Doc, { documentId, token, serverUrl =
     status,
     error,
     users,
+    user,
+    awareness: provider?.awareness,
     isConnected: status === 'connected',
   };
 }

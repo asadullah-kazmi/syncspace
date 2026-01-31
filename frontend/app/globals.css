@@ -25,3 +25,5 @@ body {
     text-wrap: balance;
   }
 }
+
+@import './components/editor.css';

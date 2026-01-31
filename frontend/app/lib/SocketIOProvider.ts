@@ -14,6 +14,8 @@ export class SocketIOProvider {
   private doc: Y.Doc;
   private documentId: string;
   private synced: boolean = false;
+  private isReconnecting: boolean = false;
+  private userRole: 'owner' | 'editor' | 'viewer' | null = null;
   private onSyncedCallbacks: ((synced: boolean) => void)[] = [];
   private onStatusCallbacks: ((status: { status: 'connected' | 'disconnected' | 'error'; error?: string }) => void)[] = [];
 
@@ -36,12 +38,18 @@ export class SocketIOProvider {
     // Listen for incoming Yjs updates from server
     this.socket.on('yjs-update', this.handleRemoteUpdate);
 
+    // Listen for initial sync (full document state from server)
+    this.socket.on('yjs-sync', this.handleInitialSync);
+
     // Listen for incoming awareness updates from server
     this.socket.on('yjs-awareness', this.handleRemoteAwareness);
 
     // Handle user joined/left events
     this.socket.on('user-joined', this.handleUserJoined);
     this.socket.on('user-left', this.handleUserLeft);
+
+    // Handle permission denied
+    this.socket.on('permission-denied', this.handlePermissionDenied);
 
     // Handle connection status
     this.socket.on('connect', this.handleConnect);
@@ -84,6 +92,25 @@ export class SocketIOProvider {
     }
   };
 
+  private handleInitialSync = ({ update }: { update: number[] }) => {
+    try {
+      // Convert array back to Uint8Array
+      const updateArray = new Uint8Array(update);
+      
+      // Apply the full document state to local document
+      // Pass 'this' as origin to prevent sending this update back to server
+      Y.applyUpdate(this.doc, updateArray, this);
+      
+      console.log(`📦 Applied initial document state (${update.length} bytes)`);
+      
+      // Mark as synced after receiving initial state
+      this.synced = true;
+      this.notifySynced(true);
+    } catch (error) {
+      console.error('Error applying initial document sync:', error);
+    }
+  };
+
   private handleRemoteAwareness = ({ update, userId }: { update: number[]; userId: string }) => {
     try {
       const updateArray = new Uint8Array(update);
@@ -101,14 +128,27 @@ export class SocketIOProvider {
     console.log(`👤 User left: ${user.userName} (${user.email})`);
   };
 
-  private handleConnect = () => {
+  private handlePermissionDenied = ({ message }: { documentId: string; message: string }) => {
+    console.error(`🚫 Permission denied: ${message}`);
+    this.notifyStatus({ status: 'error', error: message });
+  };
+
+  private handleConnect = async () => {
     console.log('🔌 Connected to Socket.IO server');
     this.notifyStatus({ status: 'connected' });
+
+    // If this is a reconnection, rejoin the document
+    if (this.isReconnecting) {
+      console.log('🔄 Reconnecting to document...');
+      await this.reconnect();
+      this.isReconnecting = false;
+    }
   };
 
   private handleDisconnect = () => {
     console.log('🔌 Disconnected from Socket.IO server');
     this.synced = false;
+    this.isReconnecting = true;
     this.notifySynced(false);
     this.notifyStatus({ status: 'disconnected' });
   };
@@ -137,6 +177,37 @@ export class SocketIOProvider {
   }
 
   /**
+   * Reconnect to document after network interruption
+   */
+  private async reconnect(): Promise<void> {
+    try {
+      // Get local state vector to request missing updates
+      const stateVector = Y.encodeStateVector(this.doc);
+      
+      // Rejoin the document room with state vector
+      return new Promise((resolve, reject) => {
+        this.socket.emit('rejoin-document', {
+          documentId: this.documentId,
+          stateVector: Array.from(stateVector),
+        }, (response: any) => {
+          if (response.success) {
+            console.log(`✅ Reconnected to document ${this.documentId}`);
+            // Server will send yjs-sync with missing updates
+            resolve();
+          } else {
+            console.error(`❌ Failed to reconnect: ${response.error}`);
+            reject(new Error(response.error));
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error during reconnection:', error);
+      // Fallback: do a full rejoin
+      await this.connect();
+    }
+  }
+
+  /**
    * Leave the document room
    */
   public disconnect() {
@@ -147,9 +218,11 @@ export class SocketIOProvider {
     this.awareness.off('update', this.handleAwarenessUpdate);
     
     this.socket.off('yjs-update', this.handleRemoteUpdate);
+    this.socket.off('yjs-sync', this.handleInitialSync);
     this.socket.off('yjs-awareness', this.handleRemoteAwareness);
     this.socket.off('user-joined', this.handleUserJoined);
     this.socket.off('user-left', this.handleUserLeft);
+    this.socket.off('permission-denied', this.handlePermissionDenied);
     this.socket.off('connect', this.handleConnect);
     this.socket.off('disconnect', this.handleDisconnect);
     this.socket.off('connect_error', this.handleConnectionError);

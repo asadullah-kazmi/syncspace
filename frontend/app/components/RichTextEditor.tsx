@@ -21,6 +21,7 @@ interface RichTextEditorProps {
     name: string;
     color: string;
   };
+  userRole?: 'owner' | 'editor' | 'viewer';
 }
 
 const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) => {
@@ -191,7 +192,13 @@ export default function RichTextEditor({
   yjsDoc,
   awareness,
   user,
+  userRole,
 }: RichTextEditorProps) {
+  // Determine if editor should be editable based on role
+  const isEditable = yjsDoc 
+    ? (userRole === 'owner' || userRole === 'editor') && editable
+    : editable;
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -219,7 +226,7 @@ export default function RichTextEditor({
         : []),
     ],
     content: yjsDoc ? undefined : content,
-    editable,
+    editable: isEditable,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       onChange?.(html);
@@ -234,9 +241,9 @@ export default function RichTextEditor({
 
   useEffect(() => {
     if (editor) {
-      editor.setEditable(editable);
+      editor.setEditable(isEditable);
     }
-  }, [editable, editor]);
+  }, [isEditable, editor]);
 
   // Set awareness state when user info or editor changes
   useEffect(() => {
@@ -252,7 +259,12 @@ export default function RichTextEditor({
     <div
       className={`border border-gray-300 rounded-lg overflow-hidden bg-white ${className}`}
     >
-      {editable && <MenuBar editor={editor} yjsDoc={yjsDoc} />}
+      {isEditable && <MenuBar editor={editor} yjsDoc={yjsDoc} />}
+      {!isEditable && userRole === 'viewer' && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-sm text-yellow-800">
+          📖 You have view-only access to this document
+        </div>
+      )}
       <EditorContent
         editor={editor}
         className="prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none p-4 focus:outline-none min-h-[200px]"

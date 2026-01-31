@@ -16,7 +16,7 @@ interface RichTextEditorProps {
   yjsDoc?: Y.Doc;
 }
 
-const MenuBar = ({ editor }: { editor: Editor | null }) => {
+const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) => {
   if (!editor) {
     return null;
   }
@@ -153,20 +153,24 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       >
         Horizontal Rule
       </button>
-      <button
-        onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().chain().focus().undo().run()}
-        className="px-3 py-1 rounded border bg-white text-gray-700 border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Undo
-      </button>
-      <button
-        onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().chain().focus().redo().run()}
-        className="px-3 py-1 rounded border bg-white text-gray-700 border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Redo
-      </button>
+      {!yjsDoc && (
+        <>
+          <button
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={!editor.can().chain().focus().undo().run()}
+            className="px-3 py-1 rounded border bg-white text-gray-700 border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Undo
+          </button>
+          <button
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={!editor.can().chain().focus().redo().run()}
+            className="px-3 py-1 rounded border bg-white text-gray-700 border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Redo
+          </button>
+        </>
+      )}
     </div>
   );
 };
@@ -181,9 +185,7 @@ export default function RichTextEditor({
 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        history: yjsDoc ? false : true,
-      }),
+      StarterKit,
       Placeholder.configure({
         placeholder,
       }),
@@ -220,7 +222,7 @@ export default function RichTextEditor({
     <div
       className={`border border-gray-300 rounded-lg overflow-hidden bg-white ${className}`}
     >
-      {editable && <MenuBar editor={editor} />}
+      {editable && <MenuBar editor={editor} yjsDoc={yjsDoc} />}
       <EditorContent
         editor={editor}
         className="prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none p-4 focus:outline-none min-h-[200px]"

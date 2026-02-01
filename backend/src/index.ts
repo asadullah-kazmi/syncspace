@@ -16,9 +16,26 @@ dotenv.config();
 
 const app: Application = express();
 const httpServer = createServer(app);
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+].filter(Boolean) as string[];
+
+const isAllowedOrigin = (origin: string | undefined): boolean => {
+  if (!origin) return true; // allow same-origin or non-browser clients
+  return allowedOrigins.includes(origin);
+};
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS not allowed'));
+      }
+    },
     credentials: true,
   },
 });
@@ -29,7 +46,18 @@ const PORT = process.env.PORT || 5000;
 connectDB();
 
 // Middleware
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3000' }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS not allowed'));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -218,7 +218,7 @@ export default function RichTextEditor({
     ? (effectiveRole === 'owner' || effectiveRole === 'editor') && editable
     : editable;
 
-  const [, forceUpdate] = useState({});
+  const [updateCounter, setUpdateCounter] = useState(0);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -241,10 +241,10 @@ export default function RichTextEditor({
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       onChange?.(html);
-      forceUpdate({});
+      setUpdateCounter((prev) => prev + 1);
     },
     onSelectionUpdate: () => {
-      forceUpdate({});
+      setUpdateCounter((prev) => prev + 1);
     },
   });
 

@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useYjsDocument } from '../../hooks/useYjsDocument';
 import { useCollaboration } from '../../hooks/useCollaboration';
 import RichTextEditor from '../../components/RichTextEditor';
+import ShareModal from '../../components/ShareModal';
 
 interface DocumentMetadata {
   _id: string;
@@ -26,6 +27,7 @@ export default function DocumentPage() {
   const [metadata, setMetadata] = useState<DocumentMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const yjsDoc = useYjsDocument(documentId);
 
@@ -54,32 +56,32 @@ export default function DocumentPage() {
       return;
     }
 
-    const fetchDocumentMetadata = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:5000/api/documents/${documentId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch document');
-        }
-
-        const data = await response.json();
-        setMetadata(data.data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load document');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchDocumentMetadata();
   }, [user, token, documentId, router]);
+
+  const fetchDocumentMetadata = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/documents/${documentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch document');
+      }
+
+      const data = await response.json();
+      setMetadata(data.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load document');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -143,6 +145,25 @@ export default function DocumentPage() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                />
+              </svg>
+              Share
+            </button>
             <div
               className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
                 isConnected
@@ -200,6 +221,17 @@ export default function DocumentPage() {
           </p>
         </div>
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        documentId={documentId}
+        documentTitle={metadata?.title || ''}
+        ownerId={metadata?.ownerId || ''}
+        collaborators={metadata?.collaborators || []}
+        onUpdate={fetchDocumentMetadata}
+      />
     </div>
   );
 }

@@ -178,7 +178,7 @@ export default function DocumentPage() {
         </div>
 
         {/* Editor */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm text-black border border-gray-200 p-6">
           {userRole === 'viewer' && (
             <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-md p-3">
               <p className="text-sm text-yellow-800">

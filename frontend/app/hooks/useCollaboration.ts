@@ -37,15 +37,18 @@ export function useCollaboration({
   const [color, setColor] = useState('#808080');
   const providerRef = useRef<SocketIOProvider | null>(null);
 
+  // Memoize user color to prevent it from changing on every render
+  const userColor = user ? getUserColor(user.id) : '#808080';
+
+  useEffect(() => {
+    setColor(userColor);
+  }, [userColor]);
+
   useEffect(() => {
     if (!documentId || !token || !user) {
       setStatus('disconnected');
       return;
     }
-
-    // Set user color
-    const userColor = getUserColor(user.id);
-    setColor(userColor);
 
     // Create Socket.IO connection with JWT auth
     const socketInstance = io(serverUrl, {
@@ -107,7 +110,7 @@ export function useCollaboration({
       socketInstance.disconnect();
       providerRef.current = null;
     };
-  }, [documentId, token, serverUrl, yjsDoc, user]);
+  }, [documentId, token, serverUrl, yjsDoc, user?.id]);
 
   return {
     socket,

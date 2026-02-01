@@ -51,7 +51,8 @@ const DocumentSchema = new Schema<IDocument>(
     },
     yjsSnapshot: {
       type: Buffer,
-      required: true,
+      required: false,
+      default: Buffer.alloc(0),
     },
   },
   {

@@ -4,7 +4,7 @@ import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Collaboration from '@tiptap/extension-collaboration';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
 
@@ -33,6 +33,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
   return (
     <div className="border-b border-gray-300 p-2 flex flex-wrap gap-1">
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleBold().run()}
         disabled={!editor.can().chain().focus().toggleBold().run()}
         className={`px-3 py-1 rounded border ${
@@ -44,6 +45,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         Bold
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleItalic().run()}
         disabled={!editor.can().chain().focus().toggleItalic().run()}
         className={`px-3 py-1 rounded border ${
@@ -55,6 +57,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         Italic
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleStrike().run()}
         disabled={!editor.can().chain().focus().toggleStrike().run()}
         className={`px-3 py-1 rounded border ${
@@ -66,6 +69,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         Strike
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleCode().run()}
         disabled={!editor.can().chain().focus().toggleCode().run()}
         className={`px-3 py-1 rounded border ${
@@ -77,6 +81,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         Code
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().setParagraph().run()}
         className={`px-3 py-1 rounded border ${
           editor.isActive('paragraph')
@@ -87,6 +92,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         Paragraph
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         className={`px-3 py-1 rounded border ${
           editor.isActive('heading', { level: 1 })
@@ -97,6 +103,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         H1
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         className={`px-3 py-1 rounded border ${
           editor.isActive('heading', { level: 2 })
@@ -107,6 +114,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         H2
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         className={`px-3 py-1 rounded border ${
           editor.isActive('heading', { level: 3 })
@@ -117,6 +125,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         H3
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         className={`px-3 py-1 rounded border ${
           editor.isActive('bulletList')
@@ -127,6 +136,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         Bullet List
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         className={`px-3 py-1 rounded border ${
           editor.isActive('orderedList')
@@ -137,6 +147,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         Ordered List
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         className={`px-3 py-1 rounded border ${
           editor.isActive('codeBlock')
@@ -147,6 +158,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         Code Block
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         className={`px-3 py-1 rounded border ${
           editor.isActive('blockquote')
@@ -157,6 +169,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
         Blockquote
       </button>
       <button
+        type="button"
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
         className="px-3 py-1 rounded border bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
       >
@@ -165,6 +178,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
       {!yjsDoc && (
         <>
           <button
+            type="button"
             onClick={() => editor.chain().focus().undo().run()}
             disabled={!editor.can().chain().focus().undo().run()}
             className="px-3 py-1 rounded border bg-white text-gray-700 border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -172,6 +186,7 @@ const MenuBar = ({ editor, yjsDoc }: { editor: Editor | null; yjsDoc?: Y.Doc }) 
             Undo
           </button>
           <button
+            type="button"
             onClick={() => editor.chain().focus().redo().run()}
             disabled={!editor.can().chain().focus().redo().run()}
             className="px-3 py-1 rounded border bg-white text-gray-700 border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -193,12 +208,17 @@ export default function RichTextEditor({
   yjsDoc,
   awareness,
   user,
+  role,
   userRole,
 }: RichTextEditorProps) {
   // Determine if editor should be editable based on role
+  // Support both 'role' and 'userRole' props for backward compatibility
+  const effectiveRole = role || userRole;
   const isEditable = yjsDoc 
-    ? (userRole === 'owner' || userRole === 'editor') && editable
+    ? (effectiveRole === 'owner' || effectiveRole === 'editor') && editable
     : editable;
+
+  const [, forceUpdate] = useState({});
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -221,6 +241,10 @@ export default function RichTextEditor({
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       onChange?.(html);
+      forceUpdate({});
+    },
+    onSelectionUpdate: () => {
+      forceUpdate({});
     },
   });
 
@@ -251,7 +275,7 @@ export default function RichTextEditor({
       className={`border border-gray-300 rounded-lg overflow-hidden bg-white ${className}`}
     >
       {isEditable && <MenuBar editor={editor} yjsDoc={yjsDoc} />}
-      {!isEditable && userRole === 'viewer' && (
+      {!isEditable && effectiveRole === 'viewer' && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-sm text-yellow-800">
           📖 You have view-only access to this document
         </div>

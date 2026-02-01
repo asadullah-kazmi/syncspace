@@ -52,7 +52,7 @@ export const createDocument = async (
     return res.status(201).json({
       status: 'success',
       data: {
-        id: document._id,
+        _id: document._id,
         title: document.title,
         ownerId: document.ownerId,
         collaborators: document.collaborators,
@@ -110,7 +110,7 @@ export const getDocumentMetadata = async (
     return res.status(200).json({
       status: 'success',
       data: {
-        id: document._id,
+        _id: document._id,
         title: document.title,
         ownerId: document.ownerId,
         collaborators: document.collaborators,
@@ -123,6 +123,50 @@ export const getDocumentMetadata = async (
     return res.status(500).json({
       status: 'error',
       message: 'Failed to fetch document metadata',
+    });
+  }
+};
+
+export const getAllDocuments = async (
+  req: AuthRequest,
+  res: Response
+): Promise<Response> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Not authorized. Please login.',
+      });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(user.id);
+
+    const documents = await DocumentModel.find({
+      $or: [
+        { ownerId: userObjectId },
+        { 'collaborators.userId': userObjectId },
+      ],
+    })
+      .select('title ownerId collaborators createdAt updatedAt')
+      .sort({ updatedAt: -1 });
+
+    return res.status(200).json({
+      status: 'success',
+      data: documents.map((doc) => ({
+        _id: doc._id,
+        title: doc.title,
+        ownerId: doc.ownerId,
+        collaborators: doc.collaborators,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+      })),
+    });
+  } catch (error) {
+    console.error('Get all documents error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch documents',
     });
   }
 };

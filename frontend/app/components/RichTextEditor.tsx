@@ -20,6 +20,8 @@ interface RichTextEditorProps {
     name: string;
     color: string;
   };
+  userColor?: string;
+  role?: 'owner' | 'editor' | 'viewer';
   userRole?: 'owner' | 'editor' | 'viewer';
 }
 

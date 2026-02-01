@@ -6,8 +6,9 @@ import * as Y from 'yjs';
 /**
  * Hook to create and manage a Yjs document
  * Returns a Y.Doc instance that persists across re-renders
+ * @param documentId - Optional document ID for identification
  */
-export function useYjsDocument() {
+export function useYjsDocument(documentId?: string) {
   const yjsDocRef = useRef<Y.Doc | null>(null);
 
   if (!yjsDocRef.current) {

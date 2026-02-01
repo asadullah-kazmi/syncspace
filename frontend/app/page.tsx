@@ -1,38 +1,33 @@
 'use client';
 
-import RichTextEditor from './components/RichTextEditor';
-import { useYjsDocument } from './hooks/useYjsDocument';
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from './contexts/AuthContext';
 
 export default function Home() {
-  const yjsDoc = useYjsDocument();
-  const [content, setContent] = useState('');
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
-  return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">SyncSpace</h1>
-          <p className="text-gray-600">Collaborative Document Editor with Yjs</p>
-        </div>
+  useEffect(() => {
+    if (!isLoading) {
+      if (user) {
+        router.push('/documents');
+      } else {
+        router.push('/login');
+      }
+    }
+  }, [user, isLoading, router]);
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Document Editor</h2>
-          <RichTextEditor
-            yjsDoc={yjsDoc}
-            onChange={setContent}
-            placeholder="Start collaborating..."
-            className="min-h-[400px]"
-          />
-        </div>
-
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h3 className="font-semibold mb-2">HTML Output:</h3>
-          <pre className="text-sm bg-white p-4 rounded border overflow-auto max-h-60">
-            {content || '<empty>'}
-          </pre>
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  return null;
 }

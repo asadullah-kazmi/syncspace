@@ -8,33 +8,44 @@ import { getUserColor, getUsernameFromEmail } from '../lib/userUtils';
 
 interface UseCollaborationOptions {
   documentId: string;
-  token: string;
+  yjsDoc: Y.Doc;
+  user: {
+    id: string;
+    email: string;
+  } | null;
+  permission: 'owner' | 'editor' | 'viewer';
+  token?: string;
   serverUrl?: string;
-  userEmail?: string;
-  userId?: string;
 }
 
 /**
  * Hook to manage Socket.IO connection and Yjs provider for collaborative editing
  */
-export function useCollaboration(yjsDoc: Y.Doc, { documentId, token, serverUrl = 'http://localhost:5000', userEmail, userId }: UseCollaborationOptions) {
+export function useCollaboration({
+  documentId,
+  yjsDoc,
+  user,
+  permission,
+  token,
+  serverUrl = 'http://localhost:5000',
+}: UseCollaborationOptions) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [provider, setProvider] = useState<SocketIOProvider | null>(null);
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
   const [error, setError] = useState<string | null>(null);
-  const [users, setUsers] = useState<any[]>([]);
-  const [user, setUser] = useState<{ name: string; color: string } | null>(null);
+  const [userCount, setUserCount] = useState(1);
+  const [color, setColor] = useState('#808080');
   const providerRef = useRef<SocketIOProvider | null>(null);
 
   useEffect(() => {
-    if (!documentId || !token) return;
-
-    // Set user info for awareness
-    if (userEmail && userId) {
-      const userName = getUsernameFromEmail(userEmail);
-      const userColor = getUserColor(userId);
-      setUser({ name: userName, color: userColor });
+    if (!documentId || !token || !user) {
+      setStatus('disconnected');
+      return;
     }
+
+    // Set user color
+    const userColor = getUserColor(user.id);
+    setColor(userColor);
 
     // Create Socket.IO connection with JWT auth
     const socketInstance = io(serverUrl, {
@@ -62,7 +73,7 @@ export function useCollaboration(yjsDoc: Y.Doc, { documentId, token, serverUrl =
       // Join document room
       const result = await providerInstance.connect();
       if (result.success && result.users) {
-        setUsers(result.users);
+        setUserCount(result.users.length);
       } else if (result.error) {
         setError(result.error);
         setStatus('error');
@@ -70,12 +81,12 @@ export function useCollaboration(yjsDoc: Y.Doc, { documentId, token, serverUrl =
     });
 
     // Handle user presence
-    socketInstance.on('user-joined', (user: any) => {
-      setUsers((prev) => [...prev, user]);
+    socketInstance.on('user-joined', () => {
+      setUserCount((prev) => prev + 1);
     });
 
-    socketInstance.on('user-left', (user: any) => {
-      setUsers((prev) => prev.filter((u) => u.userId !== user.userId));
+    socketInstance.on('user-left', () => {
+      setUserCount((prev) => Math.max(1, prev - 1));
     });
 
     socketInstance.on('connect_error', (err) => {
@@ -96,15 +107,15 @@ export function useCollaboration(yjsDoc: Y.Doc, { documentId, token, serverUrl =
       socketInstance.disconnect();
       providerRef.current = null;
     };
-  }, [documentId, token, serverUrl, yjsDoc, userEmail, userId]);
+  }, [documentId, token, serverUrl, yjsDoc, user]);
 
   return {
     socket,
     provider,
     status,
     error,
-    users,
-    user,
+    userCount,
+    color,
     awareness: provider?.awareness,
     isConnected: status === 'connected',
   };

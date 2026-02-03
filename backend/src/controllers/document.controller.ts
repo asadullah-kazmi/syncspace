@@ -98,7 +98,9 @@ export const getDocumentMetadata = async (
         { ownerId: userObjectId },
         { 'collaborators.userId': userObjectId },
       ],
-    }).select('title ownerId collaborators createdAt updatedAt');
+    })
+      .select('title ownerId collaborators createdAt updatedAt')
+      .populate('collaborators.userId', 'email');
 
     if (!document) {
       return res.status(404).json({
@@ -107,13 +109,19 @@ export const getDocumentMetadata = async (
       });
     }
 
+    const collaborators = document.collaborators.map((c: any) => ({
+      userId: c.userId?._id?.toString?.() ?? c.userId?.toString?.() ?? c.userId,
+      role: c.role,
+      email: c.userId?.email,
+    }));
+
     return res.status(200).json({
       status: 'success',
       data: {
         _id: document._id,
         title: document.title,
         ownerId: document.ownerId,
-        collaborators: document.collaborators,
+        collaborators,
         createdAt: document.createdAt,
         updatedAt: document.updatedAt,
       },
@@ -149,6 +157,7 @@ export const getAllDocuments = async (
       ],
     })
       .select('title ownerId collaborators createdAt updatedAt')
+      .populate('collaborators.userId', 'email')
       .sort({ updatedAt: -1 });
 
     return res.status(200).json({
@@ -157,7 +166,12 @@ export const getAllDocuments = async (
         _id: doc._id,
         title: doc.title,
         ownerId: doc.ownerId,
-        collaborators: doc.collaborators,
+        collaborators: doc.collaborators.map((c: any) => ({
+          userId:
+            c.userId?._id?.toString?.() ?? c.userId?.toString?.() ?? c.userId,
+          role: c.role,
+          email: c.userId?.email,
+        })),
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
       })),
